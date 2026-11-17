@@ -1,0 +1,32 @@
+# NOTICE
+
+本插件基于以下开源项目与数据构建，特此致谢：
+
+## 词库数据
+- **cnmeme.wiki**（https://cnmeme.wiki）—— 词条内容来源。
+  本插件首次启动时下载的词库快照、以及后续同步，都来自 cnmeme.wiki
+  的公开 API（`/api/v1/public/memes`）。词条版权归原作者 / cnmeme.wiki
+  社区所有。
+
+## 词库快照与查找/同步逻辑
+- **dsh-memewiki**（thawline/dsh-memewiki，MIT License）——
+  词库快照 `data/memes.db` 的来源（本插件从其公开 raw 地址下载，
+  仓库里不带二进制词库）；SQLite 表结构、五步级联查找、问梗/裸词
+  提取规则、在线兜底设计、以及同步脚本的端点与流程，均移植自该项目。
+- **dsh-memewiki**（Liujelly/dsh-memewiki，MIT License）—— 同源分支，
+  词库规模 6,668 条（thawline 分支为 6,792 条，本插件用后者）。
+
+## 原始 AstrBot 插件
+- **astrbot_plugin_memewiki**（in1t1a1，原始作者，仓库已删除）——
+  本插件的创意与名字来源：自动查梗并注入上下文、search_meme_wiki
+  工具、“查不到就说不知道，别硬编”的用法指引。
+
+## 本插件的改动（相对 dsh-memewiki）
+- 用 Python + AstrBot 框架重写（dsh-memewiki 是 Node.js 的 DSH 插件，
+  不能直接跑在 AstrBot 上）；
+- 去掉了 DSH 专属的唤醒词剥离与反馈提交功能；
+- 闲聊短语表里去掉了 DSH 实例专属的几条；
+- 增加了 AstrBot 的指令（/梗、/更新词库、/加梗、/删梗、/梗库状态）
+  与插件内定时同步。
+
+本插件本身以 MIT License 开源（见 LICENSE）。

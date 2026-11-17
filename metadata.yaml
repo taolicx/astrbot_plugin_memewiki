@@ -1,0 +1,8 @@
+name: astrbot_plugin_memewiki
+display_name: 梗百科
+author: taolicx
+desc: 本地梗词库 + 自动查梗注入上下文，让机器人认得群里的梗。词库来自 cnmeme.wiki，支持定时同步与在线兜底。
+short_desc: 梗百科：本地词库自动查梗
+version: 0.1.0
+repo: https://github.com/taolicx/astrbot_plugin_memewiki
+astrbot_version: ">=4.5.0"
