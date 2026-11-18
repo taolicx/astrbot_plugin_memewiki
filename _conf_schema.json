@@ -1,1 +1,7 @@
-{"guidance":{"default":"","description":"自定义用法指引（留空用内置文案）","type":"text"},"guide":{"default":true,"description":"注入词条时附带用法指引（查到先接梗、别科普等）","type":"bool"},"max_query_chars":{"default":10,"description":"预查时，一句话不超过多少字才当作词（2–20）","type":"int"},"online":{"default":false,"description":"在线兜底：本地查不到时去 cnmeme.wiki 问一次（只认完全同名）","hint":"开启后，未收录的词会联网查询一次，同一词 10 分钟内只问一次，结果会缓存到本地。","type":"bool"},"preload":{"default":true,"description":"自动预查：收到消息时自动识别梗并把词条注入上下文","type":"bool"},"sync_interval_days":{"default":7,"description":"词库自动同步间隔（天），0 表示不同步","type":"int"}}
+{
+  "preload": {"type": "bool", "default": true, "description": "回复前自动识别对话里的梗"},
+  "embedding_provider_id": {"type": "string", "default": "", "description": "嵌入模型提供商 ID（可选）", "hint": "填写已在 AstrBot 配置的嵌入模型提供商 ID。留空仍可识别原句和已知变体。首次启用会分批向此提供商发送词条建立索引，语义识别时会发送对话查询文本。"},
+  "semantic_threshold": {"type": "float", "default": 0.82, "description": "语义命中所需的最低余弦相似度", "hint": "越高越保守。不同模型的分数分布可能不同。"},
+  "semantic_margin": {"type": "float", "default": 0.06, "description": "第一与第二候选需要拉开的最小分差"},
+  "sync_interval_days": {"type": "int", "default": 7, "description": "词库自动同步间隔（天），0 表示关闭自动同步"}
+}

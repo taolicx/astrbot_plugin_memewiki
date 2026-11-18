@@ -119,6 +119,10 @@ class MemeDB:
                     return row_to_dict(row)
         return None
 
+    def entries(self):
+        with self._lock:
+            return [dict(row) for row in self.conn.execute("SELECT * FROM memes ORDER BY title")]
+
     def count(self) -> int:
         with self._lock:
             try:
@@ -187,6 +191,18 @@ class MemeStore:
 
     def close(self):
         self.db.close()
+
+    def dialogue_entries(self):
+        """以自建释义覆盖同名公共词条，保留旧版本已经缓存的准确词条。"""
+        entries = {row["title"].casefold(): row for row in self.db.entries()}
+        for cached in self._load_cache().values():
+            row = cached.get("entry") if isinstance(cached, dict) else None
+            if isinstance(row, dict) and isinstance(row.get("title"), str):
+                entries.setdefault(row["title"].casefold(), row)
+        for row in self._load_custom().values():
+            if isinstance(row, dict) and isinstance(row.get("title"), str):
+                entries[row["title"].casefold()] = {**row, "_custom": True}
+        return list(entries.values())
 
     # ---------- 自建词条 ----------
 

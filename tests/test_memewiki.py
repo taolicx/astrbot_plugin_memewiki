@@ -8,13 +8,11 @@
   4. 在线兜底：节流 + 缓存 + 只认完全同名（mock urlopen）
   5. 同步：HTML 解析、dry-run、--no-existing、真实写入 + 备份
   6. 自建词条 add/remove
-  7. main.py：用 AstrBot 桩模块加载插件，测预查注入、工具与指令
+  对话链路单独由 test_hook.py 覆盖。
 
 用法：python3 tests/test_memewiki.py
 """
 
-import asyncio
-import importlib.util
 import json
 import logging
 import os
@@ -241,6 +239,15 @@ def test_sync(tmp):
     r2 = run_sync(db_path, client=FakeSyncClient(), dry_run=True, no_existing=True)
     check("--no-existing 不更新", r2["updated"] == 0 and r2["new"] == 1, str(r2))
 
+    retry_path = os.path.join(tmp, "retry.db")
+    make_fixture_db(retry_path).close()
+    client = FakeSyncClient()
+    fetch = client.get_meme
+    with mock.patch.object(client, "get_meme", side_effect=lambda key: None if key == "牛马" else fetch(key)):
+        partial = run_sync(retry_path, client=client)
+    retry = run_sync(retry_path, client=client)
+    check("失败的已有词条下次会补回", partial["failed"] == 1 and retry["updated_count"] == 1)
+
     r3 = run_sync(db_path, client=FakeSyncClient())
     check("真实写入新增", r3.get("inserted") == 1, str(r3))
     check("真实写入更新", r3.get("updated_count") == 1, str(r3))
@@ -388,70 +395,6 @@ def _install_astrbot_stubs(data_dir):
     return AstrMessageEvent, ProviderRequest
 
 
-async def test_main(tmp):
-    print("== 7. main.py（AstrBot 桩） ==")
-    data_dir = os.path.join(tmp, "plugin_data")
-    os.makedirs(data_dir, exist_ok=True)
-    make_fixture_db(os.path.join(data_dir, "memes.db")).close()
-
-    AstrMessageEvent, ProviderRequest = _install_astrbot_stubs(data_dir)
-    spec = importlib.util.spec_from_file_location(
-        "main_test", os.path.join(ROOT, "main.py")
-    )
-    main = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(main)
-
-    plugin = main.MemeWikiPlugin(context=None, config={
-        "preload": True, "guide": True, "online": False,
-        "max_query_chars": 10, "sync_interval_days": 0, "guidance": "",
-    })
-    await plugin.initialize()
-    check("插件初始化", plugin.store is not None and plugin.store.db.count() == 5)
-
-    # 预查注入：命中
-    req = ProviderRequest()
-    await plugin.on_llm_request(AstrMessageEvent("牛马是什么梗"), req)
-    check("预查注入命中", len(req.extra_user_content_parts) == 1
-          and "牛马" in req.extra_user_content_parts[0].text)
-    check("注入含指引", "梗百科·用法" in req.extra_user_content_parts[0].text)
-
-    # 预查注入：查不到不注入
-    req2 = ProviderRequest()
-    await plugin.on_llm_request(AstrMessageEvent("不存在的梗xyz是什么梗"), req2)
-    check("预查查不到不注入", len(req2.extra_user_content_parts) == 0)
-
-    # 预查注入：普通消息不注入
-    req3 = ProviderRequest()
-    await plugin.on_llm_request(AstrMessageEvent("今天天气真好"), req3)
-    check("普通消息不注入", len(req3.extra_user_content_parts) == 0)
-
-    # 工具
-    out = await plugin.search_meme_wiki(AstrMessageEvent(), "牛马")
-    check("工具命中", "牛马" in out)
-    out2 = await plugin.search_meme_wiki(AstrMessageEvent(), "不存在的梗xyz")
-    check("工具查不到", "没收录" in out2)
-
-    # 指令：/梗
-    async def collect(gen):
-        return [x async for x in gen]
-
-    res = await collect(plugin.cmd_meme(AstrMessageEvent(), "牛马"))
-    check("/梗命中", len(res) == 1 and "牛马" in res[0])
-    res = await collect(plugin.cmd_meme(AstrMessageEvent(), ""))
-    check("/梗无参给用法", len(res) == 1 and "用法" in res[0])
-
-    # 指令：/加梗、/删梗、/梗库状态
-    res = await collect(plugin.cmd_add_term(AstrMessageEvent(), "测试梗 | 测试用法"))
-    check("/加梗", len(res) == 1 and "已记下" in res[0])
-    res = await collect(plugin.cmd_status(AstrMessageEvent()))
-    check("/梗库状态", len(res) == 1 and "5 条" in res[0] and "自建词条：1 条" in res[0])
-    res = await collect(plugin.cmd_del_term(AstrMessageEvent(), "测试梗"))
-    check("/删梗", len(res) == 1 and "已删掉" in res[0])
-
-    await plugin.terminate()
-    check("插件终止无残留任务", plugin._bg_task is None)
-
-
 def main():
     print("astrbot_plugin_memewiki 测试")
     with tempfile.TemporaryDirectory() as tmp:
@@ -471,7 +414,7 @@ def main():
         with open(bad, "w", encoding="utf-8") as f:
             f.write("not a sqlite file")
         check("损坏文件校验失败", validate_db(bad)[0] is False)
-        asyncio.run(test_main(os.path.join(tmp, "t7")))
+
     print(f"\n{PASS} passed, {FAIL} failed")
     return 0 if FAIL == 0 else 1
 

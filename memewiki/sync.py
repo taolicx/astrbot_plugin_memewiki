@@ -146,6 +146,7 @@ def run_sync(db_path: str, client=None, dry_run: bool = False,
         pass
     cutoff = _parse_time(built_at)
 
+    scan_started = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     # 1. 扫全量清单
     site = []
     offset = 0
@@ -253,8 +254,9 @@ def run_sync(db_path: str, client=None, dry_run: bool = False,
                     )
                     updated += 1
         total = conn.execute("SELECT COUNT(*) FROM memes").fetchone()[0]
-        now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('built_at', ?)", (now,))
+        # 保留失败的已有词条在下轮的更新时间范围里。
+        if not failed and not no_existing:
+            conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('built_at', ?)", (scan_started,))
         conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('count', ?)", (str(total),))
         conn.execute(
             "INSERT OR REPLACE INTO meta (key, value) VALUES ('source', ?)",

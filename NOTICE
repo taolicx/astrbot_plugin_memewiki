@@ -30,3 +30,5 @@
   与插件内定时同步。
 
 本插件本身以 MIT License 开源（见 LICENSE）。
+
+对话接梗版 0.2.0 基于 taolicx/astrbot_plugin_memewiki 的 2cc3ec8 版本，新增整句匹配、对话语境判断、可选向量索引及本轮接梗提示。
